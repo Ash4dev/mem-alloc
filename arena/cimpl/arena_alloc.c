@@ -35,7 +35,7 @@ typedef struct {
   s2 _s2; // 16-23
   s3 _s3; // 24-27
   // 28-31: tail-pad
-} Foo;
+} Foo; // alignment: max(8,4,2) | size: 32
 
 size_t get_size() {
   switch(rand() % 4) {
@@ -303,4 +303,29 @@ void *resize_alloc_aligned(Arena_Allocator *arena, void *old_address, size_t old
 }
 void *resize_alloc(Arena_Allocator *arena, void *old_address, size_t old_size, size_t new_size) {
   return resize_alloc_aligned(arena, old_address, old_size, new_size, DEFAULT_ALIGNMENT);
+}
+
+Arena_Marker get_marker(Arena_Allocator *arena) {
+  Arena_Marker m;
+  if (!arena) {
+    m.is_valid = false;
+    return m;
+  }
+
+  m.prev_offset = arena->prev_offset;
+  m.curr_offset = arena->curr_offset;
+  m.is_valid = true;
+  return m;
+}
+
+void restore_to_marker(Arena_Allocator *arena, Arena_Marker *marker) {
+  if ((!arena) || (!marker)) { return; }
+
+  if (!marker->is_valid) { return; }
+
+  // A B (M1) C D (M2) : arena state
+  // M2 to M1 : don't delete C, D - may restore back to M2
+
+  arena->prev_offset = marker->prev_offset;
+  arena->curr_offset = marker->curr_offset;
 }

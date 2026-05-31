@@ -43,6 +43,16 @@ typedef struct {
   size_t curr_offset;
 } Arena_Allocator;
 
+// carries minimum info to restore allocation progress - not entire Arena state
+typedef struct {
+  // for current implementation - prev_offset, next_offset is enough
+  // happens to be entire arena state - co-incidence
+  size_t prev_offset; // required for resize
+  size_t curr_offset;
+
+  bool is_valid;
+} Arena_Marker;
+
 // why is this a good choice?
 #ifndef DEFAULT_ALIGNMENT
 #define DEFAULT_ALIGNMENT (2*sizeof(void *))
@@ -71,4 +81,7 @@ void *resize_alloc(
     void * /*old_mem_addr*/, size_t /*old_size*/,
     size_t /*new_size*/
 );
+
+Arena_Marker get_marker(Arena_Allocator * /*a*/);
+void restore_to_marker(Arena_Allocator * /*a*/, Arena_Marker * /*m*/);
 #endif
