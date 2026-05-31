@@ -41,6 +41,13 @@ typedef struct {
 
   size_t prev_offset;
   size_t curr_offset;
+
+  /*
+   * Add-ons: Basic telemetry
+   * size_t peak_usage : max(peak_usage, curr_offset)
+   * size_t operation_count: += 1 (allocate/deallocate)
+   * size_t wasted_alignment_bytes: allocate : += new_offset - arena->curr_offset
+   */
 } Arena_Allocator;
 
 // carries minimum info to restore allocation progress - not entire Arena state
@@ -84,4 +91,15 @@ void *resize_alloc(
 
 Arena_Marker get_marker(Arena_Allocator * /*a*/);
 void restore_to_marker(Arena_Allocator * /*a*/, Arena_Marker * /*m*/);
+
+/* Add-ons: Poison after restore
+ * ARENA_POISON_PATTERN 0xAA
+ * void restore_to_marker_poison(
+    Arena_Allocator *arena,
+    Arena_Marker *marker,
+    uint8_t pattern
+);
+ * memset(arena->buffer + marker->curr_offset, pattern, arena->curr_offset - marker->curr_offset)
+ * update arena prev_offset and curr_offset
+ */
 #endif
