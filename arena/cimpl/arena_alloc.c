@@ -148,19 +148,109 @@ void test_resize_beyond_capacity(Arena_Allocator *a) {
   );
 }
 
-// keeping things simple
+void test_invalid_marker(Arena_Allocator *a) {
+  free_arena(a);
+
+  Arena_Marker m = {0};
+  m.is_valid = false;
+
+  allocate(a, 16);
+
+  size_t old_curr = a->curr_offset;
+
+  restore_to_marker(a, &m);
+
+  assert(a->curr_offset == old_curr);
+}
+
+void test_marker_restore(Arena_Allocator *a) {
+  free_arena(a);
+
+  char *p1 = allocate(a, 16);
+  char *p2 = allocate(a, 16);
+
+  Arena_Marker m = get_marker(a);
+
+  char *p3 = allocate(a, 16);
+
+  assert(a->curr_offset > m.curr_offset);
+
+  restore_to_marker(a, &m);
+
+  assert(a->curr_offset == m.curr_offset);
+  assert(a->prev_offset == m.prev_offset);
+
+  char *p4 = allocate(a, 16);
+
+  // space previously occupied by p3 reused
+  assert(p4 == p3);
+}
+
+void test_nested_markers(Arena_Allocator *a) {
+  free_arena(a);
+
+  allocate(a, 16); // A
+  allocate(a, 16); // B
+
+  Arena_Marker m1 = get_marker(a);
+
+  char *c = allocate(a, 16); // C
+  char *d = allocate(a, 16); // D
+
+  Arena_Marker m2 = get_marker(a);
+
+  char *e = allocate(a, 16); // E
+
+  restore_to_marker(a, &m2);
+
+  char *e2 = allocate(a, 16);
+
+  assert(e2 == e);
+
+  restore_to_marker(a, &m1);
+
+  char *c2 = allocate(a, 16);
+
+  assert(c2 == c);
+}
+
+void test_marker_does_not_restore_memory_contents(Arena_Allocator *a) {
+  free_arena(a);
+
+  char *p = allocate(a, 16);
+
+  strcpy(p, "hello");
+
+  Arena_Marker m = get_marker(a);
+
+  strcpy(p, "world");
+
+  restore_to_marker(a, &m);
+
+  // marker restores allocation state only
+  assert(strcmp(p, "world") == 0);
+}
+
 int main() {
   printf("default alignment: %zu\n", DEFAULT_ALIGNMENT);
 
   Arena_Allocator *arena = initialize_arena(128);
 
   test_alignment(arena);
+
   test_consecutive_allocations(arena);
   test_grow_last_allocation(arena);
   test_grow_last_allocation_till_arena_size(arena);
+
   test_shrink_last_allocation(arena);
   test_grow_non_last_allocation(arena);
+
   test_resize_beyond_capacity(arena);
+
+  test_invalid_marker(arena);
+  test_marker_restore(arena);
+  test_nested_markers(arena);
+  test_marker_does_not_restore_memory_contents(arena);
 
   destroy_arena(arena);
   return 0;
