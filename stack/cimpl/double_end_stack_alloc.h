@@ -9,8 +9,7 @@
 #ifndef DOUBLE_END_STACK_ALLOC_H
 #define DOUBLE_END_STACK_ALLOC_H
 
-// size_t
-#include <cstddef>
+// size_t, ptrdiff_t
 #include <stddef.h>
 // bool
 #include <stdbool.h>
@@ -74,21 +73,15 @@ typedef struct DE_Stack_Allocator {
 bool is_power_of_2(size_t /*x*/);
 
 // explicit +,- can lead to bugs
-/*
- * adjust_offset(..., FORWARD, +16);
- * adjust_offset(..., FORWARD, -16);
- *
- * adjust_offset(..., BACKWARD, +16);
- * adjust_offset(..., BACKWARD, -16);
- * */
+// dir (1) - towards buffer end
+// delta (+) - increase size
 void adjust_offset(size_t * /*offset*/, GROWTH_DIRECTION /*dir*/, ptrdiff_t /*delta*/);
+// be careful about mixing uintptr_t and ptrdiff_t
+uintptr_t adjust_pointer(uintptr_t /*ptr*/, GROWTH_DIRECTION /*dir*/, ptrdiff_t /*delta*/);
 
-uintptr_t aligned_front_addr_w_header(
-    uintptr_t /*ptr*/, size_t /*align*/, size_t /*header_size*/
-);
-uintptr_t aligned_back_addr_w_header(
-    uintptr_t /*ptr*/, size_t /*align*/, size_t /*header_size*/
-);
+// aligned_ptr_calc_fn : header-calc + ptr adjustment - code repitition
+// TODO: forward & backward implementation - initial padding calculate differently
+size_t calc_padding_w_header(uintptr_t /*ptr*/, size_t /*align*/, size_t /*header_size*/);
 
 /* ----------------------------- allocator mgmt ---------------------------------------*/
 
