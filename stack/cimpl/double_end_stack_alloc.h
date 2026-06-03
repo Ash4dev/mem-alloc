@@ -79,9 +79,11 @@ void adjust_offset(size_t * /*offset*/, GROWTH_DIRECTION /*dir*/, ptrdiff_t /*de
 // be careful about mixing uintptr_t and ptrdiff_t
 uintptr_t adjust_pointer(uintptr_t /*ptr*/, GROWTH_DIRECTION /*dir*/, ptrdiff_t /*delta*/);
 
-// aligned_ptr_calc_fn : header-calc + ptr adjustment - code repitition
 // TODO: forward & backward implementation - initial padding calculate differently
-size_t calc_padding_w_header(uintptr_t /*ptr*/, size_t /*align*/, size_t /*header_size*/);
+size_t calc_padding_w_header(
+    uintptr_t /*ptr*/, GROWTH_DIRECTION /*dir*/,
+    size_t /*align*/, size_t /*header_size*/
+);
 
 /* ----------------------------- allocator mgmt ---------------------------------------*/
 
