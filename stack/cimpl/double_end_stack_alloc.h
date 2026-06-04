@@ -76,14 +76,37 @@ bool is_power_of_2(size_t /*x*/);
 // dir (1) - towards buffer end
 // delta (+) - increase size
 void adjust_offset(size_t * /*offset*/, GROWTH_DIRECTION /*dir*/, ptrdiff_t /*delta*/);
+
 // be careful about mixing uintptr_t and ptrdiff_t
 uintptr_t adjust_pointer(uintptr_t /*ptr*/, GROWTH_DIRECTION /*dir*/, ptrdiff_t /*delta*/);
 
-// TODO: forward & backward implementation - initial padding calculate differently
-size_t calc_padding_w_header(
-    uintptr_t /*ptr*/, GROWTH_DIRECTION /*dir*/,
-    size_t /*align*/, size_t /*header_size*/
+/*
+ * alignment is NOT the same from both directions!
+ *
+ * -(x)--|---(a-x) : forward (a-x) & backward (x) - intuition is WRONG
+  * forward alignment: user start address is aligned
+  * backward alignment: user end address is aligned - REQUIRE START
+ * C interprets address only from forward direction
+ * tradeoff: symmetry for functional correctness
+ */
+
+size_t calc_padding_w_payload(
+  uintptr_t /*ptr*/, GROWTH_DIRECTION /*dir*/,
+  size_t /*alignment*/, size_t /*payload_size*/
 );
+
+// front: h -> d -> h -> d
+size_t calc_forward_pad_w_header(
+  uintptr_t /*ptr*/, size_t /*align*/, size_t /*header_size*/
+);
+
+// back: d <- h <- d <- h
+size_t calc_backward_pad_w_header(
+  uintptr_t /*ptr*/, size_t /*align*/,
+  size_t /*header_size*/, size_t /*data_size*/
+);
+
+// https://onlinegdb.com/lUVYRsr7q
 
 /* ----------------------------- allocator mgmt ---------------------------------------*/
 
