@@ -46,15 +46,15 @@ Arena_Allocator *initialize_arena(size_t capacity) {
   return arena;
 }
 
-void destroy_arena(Arena_Allocator *arena) {
+void destroy_arena(Arena_Allocator **arena_ptr) {
   // malloc cost - manual clean-up
 
-  if (!arena) { return; }
+  if (!arena_ptr) { return; }
 
-  free(arena->buffer);
-  arena->buffer = NULL;
-  free(arena);
-  arena = NULL;
+  free((*arena_ptr)->buffer);
+  (*arena_ptr)->buffer = NULL;
+  free((*arena_ptr));
+  *arena_ptr = NULL;
 }
 
 void *allocate_aligned(Arena_Allocator *arena, size_t size, size_t alignment) {

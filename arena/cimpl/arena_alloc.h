@@ -67,7 +67,7 @@ typedef struct {
 
 // C(gingerBill) to RAII-like pattern evolution
 Arena_Allocator *initialize_arena(size_t /*capacity*/);
-void destroy_arena(Arena_Allocator * /*a*/);
+void destroy_arena(Arena_Allocator ** /*a*/);
 
 // non-static member functions : first arg is Arena_Allocator - this
 void *allocate_aligned(

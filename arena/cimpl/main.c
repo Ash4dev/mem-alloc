@@ -250,7 +250,7 @@ int main() {
   test_nested_markers(arena);
   test_marker_does_not_restore_memory_contents(arena);
 
-  destroy_arena(arena);
+  destroy_arena(&arena);
   return 0;
 }
 
