@@ -8,8 +8,9 @@
 
 #include "double_end_stack_alloc.h"
 #include <assert.h>
-#include <stddef.h>
-#include <stdint.h>
+#include <stdlib.h>
+
+/* ----------------------------- utilities --------------------------------------------*/
 
 bool is_power_of_2(size_t x) {
   uintptr_t px = (uintptr_t)x;
@@ -17,26 +18,28 @@ bool is_power_of_2(size_t x) {
 }
 
 void adjust_offset(size_t *offset, GROWTH_DIRECTION dir, ptrdiff_t delta) {
+ /*
+  * GROWTH_FORWARD - towards buffer end and +delta - increase size
+  * delta: assumes sane input in compliance with DES
+  * responsibility: simply adjust the offset
+  */
+
   if (!offset) { return; }
   if ((dir*(-dir)) != -1) { return; }
 
-  // dir (1) - towards buffer end
-  // delta (+) - increase size
-
-  // delta: assumes sane input in compliance with DES
-  // responsibility: simply adjust the offset
   *offset += dir * delta;
 }
 
 uintptr_t adjust_pointer(uintptr_t ptr, GROWTH_DIRECTION dir, ptrdiff_t delta) {
+ /*
+  * GROWTH_FORWARD - towards buffer end and +delta - increase size
+  * delta: assumes sane input in compliance with DES
+  * responsibility: simply adjust the pointer
+  */
+
   if (!ptr) { return NULL; }
   if ((dir*(-dir)) != -1) { return NULL; }
 
-  // dir (1) - towards buffer end
-  // delta (+) - increase size
-
-  // delta: assumes sane input in compliance with DES
-  // responsibility: simply adjust the pointer
   return (ptr += dir * delta);
 }
 
@@ -49,8 +52,11 @@ size_t calc_padding_w_payload(
    * ptr: offset where curr alloc can ideally begin
    * padding using ptr alone is NOT enough : header needed
    *
+   * requirements:
    * header is placed just before data - enough space for header
-   * start ptr MUST be aligned
+   * start pointer MUST be aligned
+   *
+   * responsibility: return aligned pad where data can be placed
    */
 
   assert(is_power_of_2(alignment));
@@ -87,3 +93,88 @@ size_t calc_backward_pad_w_header(
 ) {
   return calc_padding_w_payload(ptr, GROWTH_BACKWARD, alignment, header_size + data_size);
 }
+
+/* ----------------------------- allocator mgmt ---------------------------------------*/
+
+void restore_allocator(DES_Allocator *allocator) {
+  if (!allocator) { return; }
+  allocator->front.curr_offset = 0;
+  allocator->front.prev_offset = 0;
+  allocator->front.direction = GROWTH_FORWARD;
+
+  allocator->back.curr_offset = allocator->capacity-1;
+  allocator->back.prev_offset = allocator->capacity-1;
+  allocator->back.direction = GROWTH_BACKWARD;
+}
+
+DES_Allocator *initialize_allocator(size_t capacity) {
+  DES_Allocator *allocator = malloc(sizeof(DES_Allocator));
+  if (!allocator) { return NULL; }
+
+  allocator->buffer = malloc(capacity);
+  if (!(allocator->buffer)) {
+    free(allocator);
+    return NULL;
+  }
+
+  allocator->capacity = capacity;
+
+  restore_allocator(allocator);
+  return allocator;
+}
+
+void destroy_allocator(DES_Allocator **allocator_ptr) {
+  if (!allocator_ptr) { return; }
+
+  free((*allocator_ptr)->buffer);
+  (*allocator_ptr)->buffer = NULL;
+  free((*allocator_ptr));
+  *allocator_ptr = NULL;
+}
+
+/* ----------------------------- allocator utils ---------------------------------------*/
+
+// markers represent complete allocator state - not front/back individually
+DES_Marker get_marker(DES_Allocator *allocator) {
+  return (DES_Marker){
+    .front=allocator->front,
+    .back=allocator->back
+  };
+}
+
+bool verify_allocator(DES_Allocator const *allocator) {
+  if (!allocator) { return false; }
+
+  if (!(
+      (allocator->front.curr_offset <= allocator->capacity) ||
+      (allocator->back.curr_offset <= allocator->capacity)  ||
+      (allocator->front.prev_offset <= allocator->capacity) ||
+      (allocator->back.prev_offset <= allocator->capacity)
+    )) { return false; }
+
+  if (allocator->front.curr_offset > allocator->back.curr_offset) { return false; }
+
+  return true;
+}
+
+void restore_to_marker(DES_Allocator *allocator, DES_Marker *mark) {
+  if (!verify_allocator(allocator)) { return; }
+
+  allocator->front.curr_offset = mark->front.curr_offset;
+  allocator->front.prev_offset = mark->front.prev_offset;
+  allocator->back.curr_offset = mark->back.curr_offset;
+  allocator->back.curr_offset = mark->back.curr_offset;
+}
+
+size_t bytes_used(DES_Allocator const *allocator) {
+  if (!verify_allocator(allocator)) { return 0; }
+  return allocator->front.curr_offset + (allocator->capacity - allocator->back.curr_offset);
+}
+
+size_t bytes_remaining(DES_Allocator const *allocator) {
+  if (!verify_allocator(allocator)) { return 0; }
+  return (allocator->capacity - bytes_used(allocator));
+}
+
+/* ----------------------------- add / allocation -------------------------------------*/
+

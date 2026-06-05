@@ -72,9 +72,7 @@ typedef struct DE_Stack_Allocator {
 
 bool is_power_of_2(size_t /*x*/);
 
-// explicit +,- can lead to bugs
-// dir (1) - towards buffer end
-// delta (+) - increase size
+// explicit offset, pointer manipulation can lead to bugs easily
 void adjust_offset(size_t * /*offset*/, GROWTH_DIRECTION /*dir*/, ptrdiff_t /*delta*/);
 
 // be careful about mixing uintptr_t and ptrdiff_t
@@ -88,6 +86,8 @@ uintptr_t adjust_pointer(uintptr_t /*ptr*/, GROWTH_DIRECTION /*dir*/, ptrdiff_t 
   * backward alignment: user end address is aligned - REQUIRE START
  * C interprets address only from forward direction
  * tradeoff: symmetry for functional correctness
+ *
+ * draw a diagram with some allocations - to understand better
  */
 
 size_t calc_padding_w_payload(
@@ -109,24 +109,13 @@ size_t calc_backward_pad_w_header(
 // https://onlinegdb.com/lUVYRsr7q
 
 /* ----------------------------- allocator mgmt ---------------------------------------*/
-
 // NOTE: MOSTLY type information changed & NOT interface: templates suitable
+
+void restore_allocator(DES_Allocator * /*allocator*/);
 DES_Allocator *initialize_allocator(size_t /*capacity*/);
 
-// buffer != NULL
-// front.curr_offset <= capacity && back.curr_offset <= capacity
-// front.curr_offset <= back.curr_offset
-
-bool verify_allocator(const DES_Allocator * /*allocator*/);
-void destroy_allocator(DES_Allocator * /*allocator*/);
-void clear_allocator(DES_Allocator * /*allocator*/);
-
-// markers represent complete allocator state - not front/back individually
-DES_Marker get_marker(DES_Allocator * /*allocator*/);
-
-// performs validity checks
-bool verify_allocator(const DES_Allocator * /*allocator*/);
-void restore_to_marker(DES_Allocator * /*allocator*/, DES_Marker * /*mark*/);
+// need to modify the DES_Allocator * - if not ** - dangling pointer
+void destroy_allocator(DES_Allocator ** /*allocator_ptr*/);
 
 /*
  * initial intuition: front-end choice should NOT be user's concern
@@ -138,11 +127,18 @@ void restore_to_marker(DES_Allocator * /*allocator*/, DES_Marker * /*mark*/);
  * FINAL OUTCOME: front and end have semantic meaning - user's responsibility
  */
 
-size_t bytes_used(const DES_Allocator * /*allocator*/);
-size_t bytes_remaining(const DES_Allocator * /*allocator*/);
+/* ----------------------------- allocator utils ---------------------------------------*/
+
+// markers represent complete allocator state - not front/back individually
+DES_Marker get_marker(DES_Allocator * /*allocator*/);
+bool verify_allocator(DES_Allocator const * /*allocator*/);
+void restore_to_marker(DES_Allocator * /*allocator*/, DES_Marker * /*mark*/);
+
+size_t bytes_used(DES_Allocator const * /*allocator*/);
+size_t bytes_remaining(DES_Allocator const * /*allocator*/);
 
 bool has_space(
-    const DES_Allocator * /*allocator*/, size_t size /*req_size*/,
+    DES_Allocator const * /*allocator*/, size_t size /*req_size*/,
     size_t alignment /*alignment*/, GROWTH_DIRECTION /*dir*/
 );
 
