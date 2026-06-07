@@ -195,12 +195,13 @@ bool verify_allocator(DES_Allocator const *allocator) {
   if (!allocator) { return false; }
 
   if (!(
-      (allocator->front.curr_offset <= allocator->capacity) ||
-      (allocator->back.curr_offset <= allocator->capacity)  ||
-      (allocator->front.prev_offset <= allocator->capacity) ||
+      (allocator->front.curr_offset <= allocator->capacity) &&
+      (allocator->back.curr_offset <= allocator->capacity)  &&
+      (allocator->front.prev_offset <= allocator->capacity) &&
       (allocator->back.prev_offset <= allocator->capacity)
     )) { return false; }
 
+  // f == b : exhausted allocator - still valid - NOT allocatable
   if (allocator->front.curr_offset > allocator->back.curr_offset) { return false; }
 
   return true;
@@ -215,14 +216,14 @@ void restore_to_marker(DES_Allocator *allocator, DES_Marker *mark) {
   allocator->back.curr_offset = mark->back.curr_offset;
 }
 
-size_t bytes_used(DES_Allocator const *allocator) {
-  if (!verify_allocator(allocator)) { return 0; }
-  return allocator->front.curr_offset + (allocator->capacity - allocator->back.curr_offset);
-}
-
 size_t bytes_remaining(DES_Allocator const *allocator) {
   if (!verify_allocator(allocator)) { return 0; }
-  return (allocator->capacity - bytes_used(allocator));
+  return (allocator->back.curr_offset - allocator->front.curr_offset);
+}
+
+size_t bytes_used(DES_Allocator const *allocator) {
+  if (!verify_allocator(allocator)) { return 0; }
+  return allocator->capacity - bytes_remaining(allocator);
 }
 
 /* ----------------------------- add / allocation -------------------------------------*/
