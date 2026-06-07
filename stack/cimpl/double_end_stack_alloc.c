@@ -270,3 +270,11 @@ void *allocate_aligned(
   return (void *)data_ptr;
 }
 
+void *push_front(DES_Allocator *allocator, size_t data_size) {
+  return allocate_aligned(allocator, data_size, GROWTH_FORWARD, DEFAULT_ALIGNMENT);
+}
+void *push_back(DES_Allocator *allocator, size_t data_size) {
+  return allocate_aligned(allocator, data_size, GROWTH_BACKWARD, DEFAULT_ALIGNMENT);
+}
+
+/* ----------------------------- free / deallocation ----------------------------------*/

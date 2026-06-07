@@ -142,6 +142,10 @@ bool can_allocate(
     size_t alignment /*alignment*/, GROWTH_DIRECTION /*dir*/
 );
 
+#ifndef DEFAULT_ALIGNMENT
+#define DEFAULT_ALIGNMENT (2*sizeof(void *))
+#endif
+
 /* ----------------------------- add / allocation -------------------------------------*/
 
 void *allocate_aligned(
