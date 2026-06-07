@@ -10,6 +10,55 @@
 #include <assert.h>
 #include <stdlib.h>
 
+/* memory buffer of bytes - allocated from heap
+ * offsets: [data] allocation can begin from here - best-case
+   * f: fwd, b: bwd
+ * addresses need alignment, NOT offsets
+ *
+ * 0           ->            <-               CAP
+ *            f             b
+ * [= = = = = = = = = = = = = = = = = = = = = =]
+ *    [hdr]-> [data]        [data]->[hdr]
+ *
+ * free space: [f, b) - close-open interval
+   * valid DES allocator invariant : f < b
+ *
+ * allocation: aligned data start pointer to the user
+   * fwd: needs ONLY header size
+   * bwd: needs both header and data size
+     * if not data_size, data end ptr would be aligned
+     * C interprets bytes ONLY in fwd direction
+ *
+ * ----------------------------------------------------
+ *
+ * padding logic is direction-agnostic
+ *      al      p           au
+ * [= = = = = = = = = = = = = = = = = = = = = =]
+ *                [payload] y
+ *                [payload info]
+ *
+ * p = buffer + f OR b
+ * misalign: p%alignment
+   * alignment must be power of 2 - ease of math
+   * pad := fwd : alignment-misalign, bwd: misalign
+ * pad may NOT be enough to store payload
+   * fwd: payload_size := header_size
+   * bwd: payload_size := header_size + data_size
+ *
+ * shortfall = payload_size - pad
+ * pad += alignment * ceil(shortfall/alignment)
+ *
+ * ----------------------------------------------------
+ *
+ * dp (data start pointer) = f OR b + dir * calc_pad...
+ * distance from cursor to the aligned user pointer
+ * such that the required payload fits on the opposite side
+ *
+ * Forward: [dp-hsz .. dp-1] [dp .. dp+dsz-1]
+ * Backward: [dp .. dp+dsz-1] [dp+dsz .. dp+dsz+hsz-1]
+ *
+ */
+
 /* ----------------------------- utilities --------------------------------------------*/
 
 bool is_power_of_2(size_t x) {
