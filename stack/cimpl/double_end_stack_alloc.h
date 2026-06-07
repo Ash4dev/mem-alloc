@@ -137,7 +137,7 @@ void restore_to_marker(DES_Allocator * /*allocator*/, DES_Marker * /*mark*/);
 size_t bytes_used(DES_Allocator const * /*allocator*/);
 size_t bytes_remaining(DES_Allocator const * /*allocator*/);
 
-bool has_space(
+bool can_allocate(
     DES_Allocator const * /*allocator*/, size_t size /*req_size*/,
     size_t alignment /*alignment*/, GROWTH_DIRECTION /*dir*/
 );

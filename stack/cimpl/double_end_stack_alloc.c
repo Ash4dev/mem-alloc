@@ -228,3 +228,18 @@ size_t bytes_used(DES_Allocator const *allocator) {
 
 /* ----------------------------- add / allocation -------------------------------------*/
 
+bool can_allocate(
+    DES_Allocator const *allocator, size_t data_size,
+    size_t aligned_pad, GROWTH_DIRECTION dir
+) {
+  if (!verify_allocator(allocator)) { return false; }
+
+  // final state:                       -> fo_new < bo_new
+  // fwd:                               => fo + aligned_pad + size < bo
+  // bwd: fo < bo - aligned_pad         => fo + aligned_pad < bo
+  size_t front_off = allocator->front.curr_offset;
+  size_t back_off = allocator->back.curr_offset;
+
+  return (front_off + aligned_pad + (dir == GROWTH_FORWARD) * data_size) < back_off;
+}
+
