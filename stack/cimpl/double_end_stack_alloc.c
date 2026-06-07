@@ -243,3 +243,30 @@ bool can_allocate(
   return (front_off + aligned_pad + (dir == GROWTH_FORWARD) * data_size) < back_off;
 }
 
+void *allocate_aligned(
+    DES_Allocator * allocator, size_t data_size,
+    GROWTH_DIRECTION dir, size_t alignment
+) {
+  if (!verify_allocator(allocator)) { return NULL; }
+  if (dir != GROWTH_FORWARD && dir != GROWTH_BACKWARD) { return NULL; }
+
+  size_t *curr_offset_ptr = (dir == GROWTH_FORWARD) ? &allocator->front.curr_offset : &allocator->back.curr_offset;
+  uintptr_t curr_ptr = adjust_pointer((uintptr_t)allocator->buffer, dir, *curr_offset_ptr);
+
+  size_t payload_size = sizeof(DES_Header) + (dir == GROWTH_BACKWARD) * data_size;
+  size_t aligned_pad = calc_padding_w_payload(curr_ptr, dir, alignment, payload_size);
+
+  if (!can_allocate(allocator, data_size, aligned_pad, dir)) { return NULL; }
+  uintptr_t data_ptr = adjust_pointer(curr_ptr, dir, aligned_pad);
+
+  size_t true_delta = aligned_pad + (dir == GROWTH_FORWARD) * data_size;
+  adjust_offset(curr_offset_ptr, dir, true_delta);
+
+  size_t head_rel = (dir == GROWTH_FORWARD) * sizeof(DES_Header) + (dir == GROWTH_BACKWARD) * data_size;
+  DES_Header *header = (DES_Header *)adjust_pointer(data_ptr, dir, (-dir) * head_rel);
+  header->past_offset = curr_ptr;
+  header->pad_reqd = aligned_pad;
+
+  return (void *)data_ptr;
+}
+
