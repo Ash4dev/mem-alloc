@@ -268,12 +268,11 @@ void *allocate_aligned(
   size_t true_delta = aligned_pad + (dir == GROWTH_FORWARD) * data_size;
   adjust_offset(curr_offset_ptr, dir, true_delta);
 
-  size_t head_rel = (dir == GROWTH_FORWARD) * sizeof(DES_Header) + (dir == GROWTH_BACKWARD) * data_size;
-  DES_Header *header = (DES_Header *)adjust_pointer(data_ptr, dir, (-dir) * head_rel);
-  header->past_offset = curr_ptr;
-  header->pad_reqd = aligned_pad;
+  DES_Header *header = (DES_Header *)adjust_pointer(data_ptr, dir, (-dir) * sizeof(DES_Header));
+  header->prev_offset = (size_t)(curr_ptr - (uintptr_t)allocator->buffer);
+  header->curr_size = data_size;
 
-  return (void *)data_ptr;
+  return memset((void *)data_ptr, 0, data_size);
 }
 
 void *push_front(DES_Allocator *allocator, size_t data_size) {
