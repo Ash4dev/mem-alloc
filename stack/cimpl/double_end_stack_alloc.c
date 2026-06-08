@@ -253,8 +253,11 @@ void *allocate_aligned(
   if (!verify_allocator(allocator)) { return NULL; }
   if (dir != GROWTH_FORWARD && dir != GROWTH_BACKWARD) { return NULL; }
 
-  size_t *curr_offset_ptr = (dir == GROWTH_FORWARD) ? &allocator->front.curr_offset : &allocator->back.curr_offset;
-  uintptr_t curr_ptr = adjust_pointer((uintptr_t)allocator->buffer, dir, *curr_offset_ptr);
+  alignment = (alignment < alignof(DES_Header)) ? alignof(DES_Header) : alignment;
+
+  size_t *curr_offset_ptr = (dir == GROWTH_FORWARD) ? &allocator->front.offset : &allocator->back.offset;
+  // offsets are measured from buffer start - GROWTH_FORWARD fixed
+  uintptr_t curr_ptr = adjust_pointer((uintptr_t)allocator->buffer, GROWTH_FORWARD, *curr_offset_ptr);
 
   size_t payload_size = sizeof(DES_Header) + (dir == GROWTH_BACKWARD) * data_size;
   size_t aligned_pad = calc_padding_w_payload(curr_ptr, dir, alignment, payload_size);
