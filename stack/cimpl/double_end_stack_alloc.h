@@ -22,13 +22,11 @@ typedef enum {
 } GROWTH_DIRECTION;
 
 typedef struct DE_Stack_Allocator_State {
-  // TODO: if header has prev_offset why carry?
-  size_t prev_offset;
   /*
    * front.curr_offset = bytes from start
    * back.curr_offset  = bytes from start
    */
-  size_t curr_offset;
+  size_t offset;
   GROWTH_DIRECTION direction;
 } DES_State;
 
@@ -41,13 +39,9 @@ typedef struct DE_Stack_Allocator_Marker {
 
 // NOTE: actual new addition
 typedef struct DE_Stack_Allocator_Header {
-  // TODO: get more clarity on what's required & not
-
   // connects previous and current allocation
-  size_t past_offset;
-  size_t pad_reqd;
-  // prev_offset - curr_offset enough? is below optional?
-  size_t curr_size; // use: free_alloc (curr size info)
+  size_t prev_offset;
+  size_t curr_size;
 } DES_Header;
 
 typedef unsigned char buffer_t;
@@ -100,13 +94,11 @@ size_t calc_forward_pad_w_header(
   uintptr_t /*ptr*/, size_t /*align*/, size_t /*header_size*/
 );
 
-// back: d <- h <- d <- h
+// back: h <- d <- h <- d
 size_t calc_backward_pad_w_header(
   uintptr_t /*ptr*/, size_t /*align*/,
   size_t /*header_size*/, size_t /*data_size*/
 );
-
-// https://onlinegdb.com/lUVYRsr7q
 
 /* ----------------------------- allocator mgmt ---------------------------------------*/
 // NOTE: MOSTLY type information changed & NOT interface: templates suitable
