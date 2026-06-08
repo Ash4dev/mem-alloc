@@ -8,7 +8,9 @@
 
 #include "double_end_stack_alloc.h"
 #include <assert.h>
+#include <stdalign.h>
 #include <stdlib.h>
+#include <string.h>
 
 /* memory buffer of bytes - allocated from heap
  * offsets: [data] allocation can begin from here - best-case
@@ -74,9 +76,10 @@ void adjust_offset(size_t *offset, GROWTH_DIRECTION dir, ptrdiff_t delta) {
   */
 
   if (!offset) { return; }
-  if ((dir*(-dir)) != -1) { return; }
-
-  *offset += dir * delta;
+  if (dir == GROWTH_FORWARD)
+    *offset += (size_t)delta;
+  else
+    *offset -= (size_t)delta;
 }
 
 uintptr_t adjust_pointer(uintptr_t ptr, GROWTH_DIRECTION dir, ptrdiff_t delta) {
@@ -147,12 +150,10 @@ size_t calc_backward_pad_w_header(
 
 void restore_allocator(DES_Allocator *allocator) {
   if (!allocator) { return; }
-  allocator->front.curr_offset = 0;
-  allocator->front.prev_offset = 0;
+  allocator->front.offset = 0;
   allocator->front.direction = GROWTH_FORWARD;
 
-  allocator->back.curr_offset = allocator->capacity-1;
-  allocator->back.prev_offset = allocator->capacity-1;
+  allocator->back.offset = allocator->capacity;
   allocator->back.direction = GROWTH_BACKWARD;
 }
 
@@ -195,10 +196,8 @@ bool verify_allocator(DES_Allocator const *allocator) {
   if (!allocator) { return false; }
 
   if (!(
-      (allocator->front.curr_offset <= allocator->capacity) &&
-      (allocator->back.curr_offset <= allocator->capacity)  &&
-      (allocator->front.prev_offset <= allocator->capacity) &&
-      (allocator->back.prev_offset <= allocator->capacity)
+      (allocator->front.offset <= allocator->capacity) &&
+      (allocator->back.offset <= allocator->capacity)
     )) { return false; }
 
   // f == b : exhausted allocator - still valid - NOT allocatable
@@ -210,15 +209,13 @@ bool verify_allocator(DES_Allocator const *allocator) {
 void restore_to_marker(DES_Allocator *allocator, DES_Marker *mark) {
   if (!verify_allocator(allocator)) { return; }
 
-  allocator->front.curr_offset = mark->front.curr_offset;
-  allocator->front.prev_offset = mark->front.prev_offset;
-  allocator->back.curr_offset = mark->back.curr_offset;
-  allocator->back.curr_offset = mark->back.curr_offset;
+  allocator->front.offset = mark->front.offset;
+  allocator->back.offset = mark->back.offset;
 }
 
 size_t bytes_remaining(DES_Allocator const *allocator) {
   if (!verify_allocator(allocator)) { return 0; }
-  return (allocator->back.curr_offset - allocator->front.curr_offset);
+  return (allocator->back.offset - allocator->front.offset);
 }
 
 size_t bytes_used(DES_Allocator const *allocator) {
@@ -259,13 +256,14 @@ void *allocate_aligned(
   // offsets are measured from buffer start - GROWTH_FORWARD fixed
   uintptr_t curr_ptr = adjust_pointer((uintptr_t)allocator->buffer, GROWTH_FORWARD, *curr_offset_ptr);
 
-  size_t payload_size = sizeof(DES_Header) + (dir == GROWTH_BACKWARD) * data_size;
+  size_t payload_size = (dir == GROWTH_FORWARD) * sizeof(DES_Header) + (dir == GROWTH_BACKWARD) * data_size;
   size_t aligned_pad = calc_padding_w_payload(curr_ptr, dir, alignment, payload_size);
 
   if (!can_allocate(allocator, data_size, aligned_pad, dir)) { return NULL; }
   uintptr_t data_ptr = adjust_pointer(curr_ptr, dir, aligned_pad);
 
-  size_t true_delta = aligned_pad + (dir == GROWTH_FORWARD) * data_size;
+  size_t true_delta = aligned_pad +
+    (dir == GROWTH_FORWARD) * data_size + (dir == GROWTH_BACKWARD) * sizeof(DES_Header);
   adjust_offset(curr_offset_ptr, dir, true_delta);
 
   DES_Header *header = (DES_Header *)adjust_pointer(data_ptr, dir, (-dir) * sizeof(DES_Header));
