@@ -202,7 +202,7 @@ bool verify_allocator(DES_Allocator const *allocator) {
     )) { return false; }
 
   // f == b : exhausted allocator - still valid - NOT allocatable
-  if (allocator->front.curr_offset > allocator->back.curr_offset) { return false; }
+  if (allocator->front.offset > allocator->back.offset) { return false; }
 
   return true;
 }
@@ -240,6 +240,10 @@ bool can_allocate(
   size_t front_off = allocator->front.offset;
   size_t back_off = allocator->back.offset;
 
+  return (
+  front_off + aligned_pad +
+  (dir == GROWTH_FORWARD) * data_size + (dir == GROWTH_BACKWARD) * sizeof(DES_Header)
+  ) < back_off;
 }
 
 void *allocate_aligned(
