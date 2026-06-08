@@ -18,7 +18,7 @@
  * 0           ->            <-               CAP
  *            f             b
  * [= = = = = = = = = = = = = = = = = = = = = =]
- *    [hdr]-> [data]        [data]->[hdr]
+ *    [hdr]-> [data]        [hdr]->[data]
  *
  * free space: [f, b) - close-open interval
    * valid DES allocator invariant : f < b
@@ -43,7 +43,7 @@
    * pad := fwd : alignment-misalign, bwd: misalign
  * pad may NOT be enough to store payload
    * fwd: payload_size := header_size
-   * bwd: payload_size := header_size + data_size
+   * bwd: payload_size := data_size
  *
  * shortfall = payload_size - pad
  * pad += alignment * ceil(shortfall/alignment)
@@ -55,7 +55,7 @@
  * such that the required payload fits on the opposite side
  *
  * Forward: [dp-hsz .. dp-1] [dp .. dp+dsz-1]
- * Backward: [dp .. dp+dsz-1] [dp+dsz .. dp+dsz+hsz-1]
+ * Backward: [dp-hsz .. dp-1] [dp .. dp+dsz-1]
  *
  */
 
