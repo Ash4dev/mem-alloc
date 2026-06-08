@@ -140,7 +140,7 @@ size_t calc_backward_pad_w_header(
   uintptr_t ptr, size_t alignment,
   size_t header_size, size_t data_size
 ) {
-  return calc_padding_w_payload(ptr, GROWTH_BACKWARD, alignment, header_size + data_size);
+  return calc_padding_w_payload(ptr, GROWTH_BACKWARD, alignment, data_size);
 }
 
 /* ----------------------------- allocator mgmt ---------------------------------------*/
@@ -234,13 +234,12 @@ bool can_allocate(
 ) {
   if (!verify_allocator(allocator)) { return false; }
 
-  // final state:                       -> fo_new < bo_new
-  // fwd:                               => fo + aligned_pad + size < bo
-  // bwd: fo < bo - aligned_pad         => fo + aligned_pad < bo
-  size_t front_off = allocator->front.curr_offset;
-  size_t back_off = allocator->back.curr_offset;
+  // final state:                                     => fo_new < bo_new
+  // fwd:                                             => fo + aligned_pad + data_size < bo
+  // bwd: fo < bo - aligned_pad - header_size         => fo + aligned_pad + header_size < bo
+  size_t front_off = allocator->front.offset;
+  size_t back_off = allocator->back.offset;
 
-  return (front_off + aligned_pad + (dir == GROWTH_FORWARD) * data_size) < back_off;
 }
 
 void *allocate_aligned(
