@@ -272,27 +272,36 @@ void *allocate_aligned(
 ) {
   if (!verify_allocator(allocator)) { return NULL; }
   if (dir != GROWTH_FORWARD && dir != GROWTH_BACKWARD) { return NULL; }
+  if (!is_power_of_2(alignment)) { return NULL; }
 
+  // alignof - compile time - operator - determines alignment requirement
+  // alignment requirements are always powers of 2 - same as sizeof - for fundamental types
   alignment = (alignment < alignof(DES_Header)) ? alignof(DES_Header) : alignment;
 
+  // current position in the buffer
   size_t *curr_offset_ptr = (dir == GROWTH_FORWARD) ? &allocator->front.offset : &allocator->back.offset;
-  // offsets are measured from buffer start - GROWTH_FORWARD fixed
+  // NOTE: offsets are measured from buffer start - GROWTH_FORWARD fixed
   uintptr_t curr_ptr = adjust_pointer((uintptr_t)allocator->buffer, GROWTH_FORWARD, *curr_offset_ptr);
 
+  // calculate amount of padding to align the payload
   size_t payload_size = (dir == GROWTH_FORWARD) * sizeof(DES_Header) + (dir == GROWTH_BACKWARD) * data_size;
   size_t aligned_pad = calc_padding_w_payload(curr_ptr, dir, alignment, payload_size);
 
+  // check if allocation is possible
   if (!can_allocate(allocator, data_size, aligned_pad, dir)) { return NULL; }
   uintptr_t data_ptr = adjust_pointer(curr_ptr, dir, aligned_pad);
 
+  // mark the header
+  DES_Header *header = (DES_Header *)adjust_pointer(data_ptr, dir, (-dir) * sizeof(DES_Header));
+  header->prev_offset = *curr_offset_ptr;
+  header->curr_size = data_size;
+
+  // adjust current offset
   size_t true_delta = aligned_pad +
     (dir == GROWTH_FORWARD) * data_size + (dir == GROWTH_BACKWARD) * sizeof(DES_Header);
   adjust_offset(curr_offset_ptr, dir, true_delta);
 
-  DES_Header *header = (DES_Header *)adjust_pointer(data_ptr, dir, (-dir) * sizeof(DES_Header));
-  header->prev_offset = (size_t)(curr_ptr - (uintptr_t)allocator->buffer);
-  header->curr_size = data_size;
-
+  // return data pointer after initializing with 0-like
   return memset((void *)data_ptr, 0, data_size);
 }
 
