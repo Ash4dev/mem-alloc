@@ -117,9 +117,11 @@ uintptr_t adjust_pointer(uintptr_t ptr, GROWTH_DIRECTION dir, ptrdiff_t delta) {
   */
 
   if (!ptr) { return NULL; }
-  if ((dir*(-dir)) != -1) { return NULL; }
-
-  return (ptr += dir * delta);
+  if (dir == GROWTH_FORWARD)
+    ptr += (size_t)delta;
+  else
+    ptr -= (size_t)delta;
+  return ptr;
 }
 
 size_t calc_padding_w_payload(
@@ -270,6 +272,7 @@ void *allocate_aligned(
     DES_Allocator * allocator, size_t data_size,
     GROWTH_DIRECTION dir, size_t alignment
 ) {
+  // sanity checks
   if (!verify_allocator(allocator)) { return NULL; }
   if (dir != GROWTH_FORWARD && dir != GROWTH_BACKWARD) { return NULL; }
   if (!is_power_of_2(alignment)) { return NULL; }
