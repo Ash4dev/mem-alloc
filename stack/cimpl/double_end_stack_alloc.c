@@ -13,26 +13,27 @@
 #include <string.h>
 
 /* memory buffer of bytes - allocated from heap
- * offsets: [data] allocation can begin from here - best-case
-   * f: fwd, b: bwd
+ * offsets: [data] allocation can begin(end) from here - best-case
+   * offsets are boundaries, NOT memory block
+   * f: fwd (begin), b: bwd (end)
  * addresses need alignment, NOT offsets
  *
  * 0           ->            <-               CAP
  *            f             b
  * [= = = = = = = = = = = = = = = = = = = = = =]
- *    [hdr]-> [data]        [hdr]->[data]
+ *    [hdr]-> [data]        [hdr]-> [data]
  *
  * free space: [f, b) - close-open interval
    * valid DES allocator invariant : f < b
  *
  * allocation: aligned data start pointer to the user
    * fwd: needs ONLY header size
-   * bwd: needs both header and data size
-     * if not data_size, data end ptr would be aligned
+   * bwd: needs ONLY data size
      * C interprets bytes ONLY in fwd direction
  *
  * ----------------------------------------------------
  *
+ * https://medium.com/@aliaksandr.kavalchuk/%D1%81-interview-questions-structure-alignment-in-c-07c8ea7e1d27
  * padding logic is direction-agnostic
  *      al      p           au
  * [= = = = = = = = = = = = = = = = = = = = = =]
@@ -43,6 +44,8 @@
  * misalign: p%alignment
    * alignment must be power of 2 - ease of math
    * pad := fwd : alignment-misalign, bwd: misalign
+ *
+ * [open to suggestions for a better name]: payload
  * pad may NOT be enough to store payload
    * fwd: payload_size := header_size
    * bwd: payload_size := data_size
@@ -50,15 +53,39 @@
  * shortfall = payload_size - pad
  * pad += alignment * ceil(shortfall/alignment)
  *
+ * data_ptr = p + dir * pad - MUST be aligned
+ * head_ptr = data_ptr - sizeof(DES_Header)
+ *
  * ----------------------------------------------------
  *
  * dp (data start pointer) = f OR b + dir * calc_pad...
  * distance from cursor to the aligned user pointer
  * such that the required payload fits on the opposite side
+ * payload immediately preceeds - corr. to direction
  *
+ * IDENTICAL layout
  * Forward: [dp-hsz .. dp-1] [dp .. dp+dsz-1]
  * Backward: [dp-hsz .. dp-1] [dp .. dp+dsz-1]
  *
+ * For example,
+ * alignment = 16 B, HS = 8 B, DS = 16 B, capacity = 1024 B
+ * Forward:
+ * (08) (09) ... (14) (15)  || (16) (17) ... (30) (31)
+ *  |   |         |    |        |    |        |    |
+ * (09) (10) ... (15) (16)  || (17) (18) ... (31) (32)
+ *
+ * Backward:
+ * (1008) (1009)  ... (1006) (1007)  || (1008) (1009) ... (1022)  (1023)
+ *   |      |           |      |          |      |          |       |
+ * (1009) (1010) ... (1005) (1008)  || (1009) (1010) ... (1023) (1024)
+ * ----------------------------------------------------
+ *
+ * alignment of N (=2^p*3^q*...) ensures
+   * addr % N == 0 => addr % 2^x == 0 (x=0..p)
+   * generally addr % factor == 0
+ * if header_size is a factor of N - then header is also aligned
+ *
+ * NOTE: if alignment is forced to be power of 2 - so must be the header_size
  */
 
 /* ----------------------------- utilities --------------------------------------------*/
@@ -102,12 +129,6 @@ size_t calc_padding_w_payload(
 
   /*
    * ptr: offset where curr alloc can ideally begin
-   * padding using ptr alone is NOT enough : header needed
-   *
-   * requirements:
-   * header is placed just before data - enough space for header
-   * start pointer MUST be aligned
-   *
    * responsibility: return aligned pad where data can be placed
    */
 
@@ -150,9 +171,11 @@ size_t calc_backward_pad_w_header(
 
 void restore_allocator(DES_Allocator *allocator) {
   if (!allocator) { return; }
+  // data allocation may begin from here - best case
   allocator->front.offset = 0;
   allocator->front.direction = GROWTH_FORWARD;
 
+  // data allocation may end at here - best case
   allocator->back.offset = allocator->capacity;
   allocator->back.direction = GROWTH_BACKWARD;
 }
