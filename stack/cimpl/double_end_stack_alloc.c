@@ -372,3 +372,28 @@ void pop_back(DES_Allocator *allocator, void *ptr) {
   pop_last_element(allocator, ptr, GROWTH_BACKWARD);
 }
 
+void clear_front(DES_Allocator * allocator) {
+/*
+ * Drops all front-side allocations.
+ * Does not affect back allocations.
+ */
+
+  if (!verify_allocator(allocator)) { return; }
+  allocator->front.offset = 0;
+}
+
+void clear_back(DES_Allocator *allocator) {
+/*
+ * Drops all back-side allocations.
+ * Does not affect front allocations.
+ */
+
+  if (!verify_allocator(allocator)) { return; }
+  allocator->back.offset = allocator->capacity;
+}
+
+void clear_allocator(DES_Allocator *allocator) {
+  clear_front(allocator);
+  clear_back(allocator);
+}
+
