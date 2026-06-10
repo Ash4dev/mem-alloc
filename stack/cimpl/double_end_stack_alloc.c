@@ -316,3 +316,28 @@ void *push_back(DES_Allocator *allocator, size_t data_size) {
 }
 
 /* ----------------------------- free / deallocation ----------------------------------*/
+void pop_last_element(DES_Allocator *allocator, void *ptr, GROWTH_DIRECTION dir) {
+  // validation
+  if (!ptr) { return; }
+  if (!verify_allocator(allocator)) { return; }
+  if (!inside_buffer(allocator, ptr)) { return; }
+
+  // check for double free
+  if (beyond_cursor(allocator, ptr, dir)) { return; }
+
+  if (!is_last_allocation(allocator, ptr, dir)) { return; }
+
+  DES_Header *header = (DES_Header *)((uintptr_t)ptr - sizeof(DES_Header));
+  if (dir == GROWTH_FORWARD)
+    allocator->front.offset = header->prev_offset;
+  else
+    allocator->back.offset = header->prev_offset;
+}
+
+void pop_front(DES_Allocator *allocator, void *ptr) {
+  pop_last_element(allocator, ptr, GROWTH_FORWARD);
+}
+void pop_back(DES_Allocator *allocator, void *ptr) {
+  pop_last_element(allocator, ptr, GROWTH_BACKWARD);
+}
+
