@@ -150,6 +150,11 @@ void *push_back(DES_Allocator * /*allocator*/, size_t /*req_size*/);
 
 /* ----------------------------- free / deallocation ----------------------------------*/
 
+bool inside_buffer(DES_Allocator * /*allocator*/, void * /*ptr*/);
+bool beyond_cursor(DES_Allocator * /*allocator*/, void * /*ptr*/, GROWTH_DIRECTION /*dir*/);
+bool is_last_allocation(DES_Allocator * /*allocator*/, void * /*ptr*/, GROWTH_DIRECTION /*dir*/);
+
+void pop_last_element(DES_Allocator * /*allocator*/, void * /*ptr*/, GROWTH_DIRECTION /*dir*/);
 void pop_front(DES_Allocator * /*allocator*/, void * /*ptr*/);
 void pop_back(DES_Allocator * /*allocator*/, void * /*ptr*/);
 

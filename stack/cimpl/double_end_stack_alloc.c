@@ -316,6 +316,37 @@ void *push_back(DES_Allocator *allocator, size_t data_size) {
 }
 
 /* ----------------------------- free / deallocation ----------------------------------*/
+bool inside_buffer(DES_Allocator *allocator, void *ptr) {
+  uintptr_t uptr = (uintptr_t)ptr;
+
+  uintptr_t start = (uintptr_t)allocator->buffer;
+  uintptr_t end = (uintptr_t)allocator->buffer + (uintptr_t)allocator->capacity;
+
+  return ((uptr >= start) && (uptr < end));
+}
+
+bool beyond_cursor(DES_Allocator *allocator, void *ptr, GROWTH_DIRECTION dir) {
+  uintptr_t uptr = (uintptr_t)ptr;
+  uintptr_t start = (uintptr_t)allocator->buffer;
+  size_t offset = (dir == GROWTH_FORWARD) ? allocator->front.offset : allocator->back.offset;
+
+  return
+  (dir == GROWTH_FORWARD) * (start + offset < uptr)
+  +
+  (dir == GROWTH_BACKWARD) * (start + offset > uptr);
+}
+
+bool is_last_allocation(DES_Allocator *allocator, void *ptr, GROWTH_DIRECTION dir) {
+  uintptr_t uptr = (uintptr_t)ptr;
+  uintptr_t start = (uintptr_t)allocator->buffer;
+  DES_Header *header = (DES_Header *)(uptr - sizeof(DES_Header));
+
+  return
+  (dir == GROWTH_FORWARD) * ((uptr - start + header->curr_size) == allocator->front.offset)
+  +
+  (dir == GROWTH_BACKWARD) * ((uptr - start - sizeof(DES_Header)) == allocator->back.offset);
+}
+
 void pop_last_element(DES_Allocator *allocator, void *ptr, GROWTH_DIRECTION dir) {
   // validation
   if (!ptr) { return; }
